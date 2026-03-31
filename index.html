@@ -9,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -23,6 +24,12 @@
           }
         }
       }
+    }
+  </script>
+  <!-- Prevent flash of wrong theme -->
+  <script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,19 +57,24 @@
     .blog-date {
       font-variant-numeric: tabular-nums;
     }
+    .dark .koala-svg .ear { fill: #d1d5db; opacity: 0.5; }
+    .dark .koala-svg .head { fill: #9ca3af; opacity: 0.8; }
+    .dark .koala-svg .leaf { fill: #6ee7b7; }
+    .dark .koala-svg .leaf-stem { stroke: #6ee7b7;
+    }
   </style>
 </head>
-<body class="bg-cream text-bark antialiased">
+<body class="bg-cream dark:bg-gray-950 text-bark dark:text-gray-100 antialiased transition-colors duration-300">
 
   <!-- Nav -->
-  <nav class="fixed top-0 w-full bg-cream/90 backdrop-blur-sm z-50 border-b border-bark/10">
+  <nav class="fixed top-0 w-full bg-cream/90 dark:bg-gray-950/90 backdrop-blur-sm z-50 border-b border-bark/10 dark:border-gray-800">
     <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="#top" class="flex items-center gap-2 font-semibold text-lg text-bark hover:text-eucalyptus transition-colors">
+      <a href="#top" class="flex items-center gap-2 font-semibold text-lg text-bark dark:text-gray-100 hover:text-eucalyptus dark:hover:text-eucalight transition-colors">
         <!-- Inline koala SVG logo -->
-        <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="14" cy="20" r="12" fill="#6b7280" opacity="0.3"/>
-          <circle cx="50" cy="20" r="12" fill="#6b7280" opacity="0.3"/>
-          <ellipse cx="32" cy="34" rx="18" ry="20" fill="#6b7280"/>
+        <svg class="koala-svg" width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ear" cx="14" cy="20" r="12" fill="#6b7280" opacity="0.3"/>
+          <circle class="ear" cx="50" cy="20" r="12" fill="#6b7280" opacity="0.3"/>
+          <ellipse class="head" cx="32" cy="34" rx="18" ry="20" fill="#6b7280"/>
           <ellipse cx="32" cy="36" rx="13" ry="14" fill="#d1d5db"/>
           <ellipse cx="32" cy="42" rx="5" ry="3.5" fill="#1f2937"/>
           <circle cx="25" cy="30" r="2.5" fill="#1f2937"/>
@@ -73,22 +85,35 @@
         Koala Works
       </a>
       <div class="hidden sm:flex items-center gap-6 text-sm">
-        <a href="#smalltalk" class="nav-link text-bark/70 hover:text-bark transition-colors">Smalltalk</a>
-        <a href="#blog" class="nav-link text-bark/70 hover:text-bark transition-colors">Blog</a>
-        <a href="#about" class="nav-link text-bark/70 hover:text-bark transition-colors">About</a>
-        <a href="#contact" class="nav-link text-bark/70 hover:text-bark transition-colors">Contact</a>
+        <a href="#smalltalk" class="nav-link text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors">Smalltalk</a>
+        <a href="#blog" class="nav-link text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors">Blog</a>
+        <a href="#about" class="nav-link text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors">About</a>
+        <a href="#contact" class="nav-link text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors">Contact</a>
+        <!-- Dark mode toggle -->
+        <button id="theme-toggle" class="text-bark/50 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors" aria-label="Toggle dark mode">
+          <!-- Sun icon (shown in dark mode) -->
+          <svg id="icon-sun" class="hidden dark:block" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg id="icon-moon" class="block dark:hidden" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
       </div>
-      <!-- Mobile menu button -->
-      <button id="menu-toggle" class="sm:hidden text-bark/70 hover:text-bark" aria-label="Menu">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
+      <!-- Mobile: theme toggle + menu button -->
+      <div class="flex sm:hidden items-center gap-3">
+        <button id="theme-toggle-mobile" class="text-bark/50 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100 transition-colors" aria-label="Toggle dark mode">
+          <svg class="hidden dark:block" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="block dark:hidden" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+        <button id="menu-toggle" class="text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100" aria-label="Menu">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
     </div>
     <!-- Mobile nav -->
     <div id="mobile-menu" class="hidden sm:hidden px-6 pb-4 space-y-3 text-sm">
-      <a href="#smalltalk" class="block text-bark/70 hover:text-bark">Smalltalk</a>
-      <a href="#blog" class="block text-bark/70 hover:text-bark">Blog</a>
-      <a href="#about" class="block text-bark/70 hover:text-bark">About</a>
-      <a href="#contact" class="block text-bark/70 hover:text-bark">Contact</a>
+      <a href="#smalltalk" class="block text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100">Smalltalk</a>
+      <a href="#blog" class="block text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100">Blog</a>
+      <a href="#about" class="block text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100">About</a>
+      <a href="#contact" class="block text-bark/70 dark:text-gray-400 hover:text-bark dark:hover:text-gray-100">Contact</a>
     </div>
   </nav>
 
@@ -96,10 +121,10 @@
   <section id="top" class="pt-32 pb-20 px-6">
     <div class="max-w-4xl mx-auto text-center">
       <!-- Big koala illustration -->
-      <svg class="mx-auto mb-8" width="120" height="120" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="20" r="12" fill="#2d6a4f" opacity="0.2"/>
-        <circle cx="50" cy="20" r="12" fill="#2d6a4f" opacity="0.2"/>
-        <ellipse cx="32" cy="34" rx="18" ry="20" fill="#2d6a4f" opacity="0.4"/>
+      <svg class="koala-svg mx-auto mb-8" width="120" height="120" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle class="ear" cx="14" cy="20" r="12" fill="#2d6a4f" opacity="0.2"/>
+        <circle class="ear" cx="50" cy="20" r="12" fill="#2d6a4f" opacity="0.2"/>
+        <ellipse class="head" cx="32" cy="34" rx="18" ry="20" fill="#2d6a4f" opacity="0.4"/>
         <ellipse cx="32" cy="36" rx="13" ry="14" fill="#d1d5db"/>
         <ellipse cx="32" cy="42" rx="5" ry="3.5" fill="#1f2937"/>
         <circle cx="25" cy="30" r="2.5" fill="#1f2937"/>
@@ -107,42 +132,42 @@
         <circle cx="25.8" cy="29.3" r="0.8" fill="white"/>
         <circle cx="39.8" cy="29.3" r="0.8" fill="white"/>
         <!-- little leaf -->
-        <path d="M48 14 Q52 8 56 12 Q52 16 48 14Z" fill="#40916c"/>
-        <line x1="48" y1="14" x2="53" y2="10" stroke="#2d6a4f" stroke-width="0.5"/>
+        <path class="leaf" d="M48 14 Q52 8 56 12 Q52 16 48 14Z" fill="#40916c"/>
+        <line class="leaf-stem" x1="48" y1="14" x2="53" y2="10" stroke="#2d6a4f" stroke-width="0.5"/>
       </svg>
-      <h1 class="text-4xl sm:text-5xl font-bold text-bark mb-4 tracking-tight">We build things people actually want to talk about.</h1>
-      <p class="text-lg text-bark/60 max-w-2xl mx-auto mb-8">Koala Works is a small Australian studio making games and software at the intersection of AI, conversation, and play.</p>
+      <h1 class="text-4xl sm:text-5xl font-bold text-bark dark:text-gray-100 mb-4 tracking-tight">We build things people actually want to talk about.</h1>
+      <p class="text-lg text-bark/60 dark:text-gray-400 max-w-2xl mx-auto mb-8">Koala Works is a small Australian studio making games and software at the intersection of AI, conversation, and play.</p>
       <a href="#smalltalk" class="inline-block bg-eucalyptus text-white px-6 py-3 rounded-lg font-medium hover:bg-eucalight transition-colors">See what we're building</a>
     </div>
   </section>
 
   <!-- Smalltalk -->
-  <section id="smalltalk" class="py-20 px-6 bg-white">
+  <section id="smalltalk" class="py-20 px-6 bg-white dark:bg-gray-900">
     <div class="max-w-4xl mx-auto">
       <div class="max-w-2xl">
-        <p class="text-eucalyptus font-semibold text-sm uppercase tracking-wide mb-3">Now in Alpha</p>
-        <h2 class="text-3xl sm:text-4xl font-bold text-bark mb-6">Smalltalk</h2>
-        <p class="text-bark/70 text-lg leading-relaxed mb-4">
+        <p class="text-eucalyptus dark:text-eucalight font-semibold text-sm uppercase tracking-wide mb-3">Now in Alpha</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bark dark:text-gray-100 mb-6">Smalltalk</h2>
+        <p class="text-bark/70 dark:text-gray-300 text-lg leading-relaxed mb-4">
           Smalltalk is a social game where conversation is the whole point. You arrive somewhere temporary, meet a cast of characters, and build relationships through what you actually say to them. No scripted dialogue trees. Every conversation is real, freeform, and shapes what happens next.
         </p>
-        <p class="text-bark/70 text-lg leading-relaxed mb-4">
+        <p class="text-bark/70 dark:text-gray-300 text-lg leading-relaxed mb-4">
           The people you meet have their own personalities, moods, and boundaries. Pay attention and be genuine, and something real develops. Be careless, and they'll drift away. Here's the twist: not everyone you're talking to is who you think they are. Some characters might be played by other people. Can you tell the difference? Does it matter?
         </p>
-        <p class="text-bark/70 text-lg leading-relaxed mb-8">
+        <p class="text-bark/70 dark:text-gray-300 text-lg leading-relaxed mb-8">
           There's no score and no winning. Just the story that unfolds from how you choose to spend your time and who you choose to spend it with. We're keeping the finer details close to the chest for now, but if you like games that reward curiosity and conversation over reflexes and min-maxing, this one's for you. Alpha invites are going out to our first round of testers right now.
         </p>
 
         <!-- Email signup -->
-        <div class="bg-sand rounded-xl p-6 sm:p-8">
-          <h3 class="font-semibold text-bark mb-2">Want early access?</h3>
-          <p class="text-bark/60 text-sm mb-4">Drop your email and we'll let you know when the next wave of invites goes out. No spam, just game news.</p>
+        <div class="bg-sand dark:bg-gray-800 rounded-xl p-6 sm:p-8">
+          <h3 class="font-semibold text-bark dark:text-gray-100 mb-2">Want early access?</h3>
+          <p class="text-bark/60 dark:text-gray-400 text-sm mb-4">Drop your email and we'll let you know when the next wave of invites goes out. No spam, just game news.</p>
           <form action="https://works.us20.list-manage.com/subscribe/post?u=f2efa265ecfb45865f6df7641&amp;id=790c27314c&amp;f_id=001919e0f0" method="post" id="signup-form" class="flex flex-col sm:flex-row gap-3" target="_blank">
             <input
               type="email"
               name="EMAIL"
               required
               placeholder="you@example.com"
-              class="flex-1 px-4 py-2.5 rounded-lg border border-bark/20 bg-white text-bark placeholder:text-bark/30 focus:outline-none focus:ring-2 focus:ring-eucalyptus/50 focus:border-eucalyptus transition"
+              class="flex-1 px-4 py-2.5 rounded-lg border border-bark/20 dark:border-gray-600 bg-white dark:bg-gray-900 text-bark dark:text-gray-100 placeholder:text-bark/30 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-eucalyptus/50 focus:border-eucalyptus transition"
             >
             <!-- Mailchimp bot signup protection -->
             <div aria-hidden="true" style="position: absolute; left: -5000px;">
@@ -160,32 +185,32 @@
   <!-- Blog -->
   <section id="blog" class="py-20 px-6">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-bark mb-10">Updates</h2>
+      <h2 class="text-3xl font-bold text-bark dark:text-gray-100 mb-10">Updates</h2>
       <div class="space-y-8">
 
         <!-- Blog entry 1 -->
         <article class="border-l-2 border-eucalyptus pl-6">
-          <time class="blog-date text-sm text-bark/40 block mb-1">29 March 2026</time>
-          <h3 class="font-semibold text-lg text-bark mb-2">Alpha invites sent</h3>
-          <p class="text-bark/70 leading-relaxed">
+          <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">29 March 2026</time>
+          <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Alpha invites sent</h3>
+          <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
             Our first batch of Smalltalk alpha invites went out today. A small group of testers across three time zones will be putting the game through its paces over the next few weeks. If you signed up for the waitlist, check your inbox. We'll be expanding access as we iron things out, so keep an eye on this space.
           </p>
         </article>
 
         <!-- Blog entry 2 -->
-        <article class="border-l-2 border-bark/20 pl-6">
-          <time class="blog-date text-sm text-bark/40 block mb-1">14 March 2026</time>
-          <h3 class="font-semibold text-lg text-bark mb-2">Smalltalk playtesting begins internally</h3>
-          <p class="text-bark/70 leading-relaxed">
+        <article class="border-l-2 border-bark/20 dark:border-gray-700 pl-6">
+          <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">14 March 2026</time>
+          <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Smalltalk playtesting begins internally</h3>
+          <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
             We've been running internal playtests for the past week and the results have been really encouraging. The core loop feels right. Conversations get weird in the best way, and games consistently run longer than planned because nobody wants to stop. Tweaking the balance of a few mechanics before we let anyone else in.
           </p>
         </article>
 
         <!-- Blog entry 3 -->
-        <article class="border-l-2 border-bark/20 pl-6">
-          <time class="blog-date text-sm text-bark/40 block mb-1">1 March 2026</time>
-          <h3 class="font-semibold text-lg text-bark mb-2">Hello, world</h3>
-          <p class="text-bark/70 leading-relaxed">
+        <article class="border-l-2 border-bark/20 dark:border-gray-700 pl-6">
+          <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">1 March 2026</time>
+          <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Hello, world</h3>
+          <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
             Koala Works is officially a thing. We're a tiny studio out of Australia building at the intersection of games, conversation, and AI. Our first project, Smalltalk, is coming together faster than expected. More soon.
           </p>
         </article>
@@ -195,15 +220,15 @@
   </section>
 
   <!-- About -->
-  <section id="about" class="py-20 px-6 bg-white">
+  <section id="about" class="py-20 px-6 bg-white dark:bg-gray-900">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-bark mb-6">About Koala Works</h2>
-      <div class="max-w-2xl space-y-4 text-bark/70 text-lg leading-relaxed">
+      <h2 class="text-3xl font-bold text-bark dark:text-gray-100 mb-6">About Koala Works</h2>
+      <div class="max-w-2xl space-y-4 text-bark/70 dark:text-gray-300 text-lg leading-relaxed">
         <p>
           Koala Works is a bootstrapped tech startup based in Australia. We split our time between two things we care about: building games that bring people together, and helping other companies build great software.
         </p>
         <p>
-          On the consulting side, we offer software engineering services with deep expertise in modern agentic AI systems (think tools like <a href="https://github.com/anthropics/claude-code" class="text-eucalyptus hover:underline">Claude Code</a> and frameworks like <a href="https://github.com/openclaw" class="text-eucalyptus hover:underline">Openclaw</a>), alongside general full-stack development. We're especially good at helping teams figure out where AI agents can actually add value, not just where they sound cool on a slide deck.
+          On the consulting side, we offer software engineering services with deep expertise in modern agentic AI systems (think tools like <a href="https://github.com/anthropics/claude-code" class="text-eucalyptus dark:text-eucalight hover:underline">Claude Code</a> and frameworks like <a href="https://github.com/openclaw" class="text-eucalyptus dark:text-eucalight hover:underline">Openclaw</a>), alongside general full-stack development. We're especially good at helping teams figure out where AI agents can actually add value, not just where they sound cool on a slide deck.
         </p>
         <p>
           On the games side, we make role-playing and social games that lean on what makes real human interaction interesting. Smalltalk is our first release.
@@ -214,13 +239,13 @@
       <div class="mt-12 flex items-center gap-5">
         <img src="data:image/jpeg;base64,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" alt="Rob Williams" class="w-16 h-16 rounded-full object-cover shrink-0">
         <div>
-          <h3 class="font-semibold text-bark">Rob Williams</h3>
-          <p class="text-bark/50 text-sm mb-1.5">Founder</p>
+          <h3 class="font-semibold text-bark dark:text-gray-100">Rob Williams</h3>
+          <p class="text-bark/50 dark:text-gray-500 text-sm mb-1.5">Founder</p>
           <div class="flex items-center gap-3">
-            <a href="https://www.linkedin.com/in/robwil" target="_blank" rel="noopener" class="text-bark/40 hover:text-eucalyptus transition-colors" aria-label="LinkedIn">
+            <a href="https://www.linkedin.com/in/robwil" target="_blank" rel="noopener" class="text-bark/40 dark:text-gray-500 hover:text-eucalyptus dark:hover:text-eucalight transition-colors" aria-label="LinkedIn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
             </a>
-            <a href="https://github.com/robwil" target="_blank" rel="noopener" class="text-bark/40 hover:text-eucalyptus transition-colors" aria-label="GitHub">
+            <a href="https://github.com/robwil" target="_blank" rel="noopener" class="text-bark/40 dark:text-gray-500 hover:text-eucalyptus dark:hover:text-eucalight transition-colors" aria-label="GitHub">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
             </a>
           </div>
@@ -232,9 +257,9 @@
   <!-- Contact -->
   <section id="contact" class="py-20 px-6">
     <div class="max-w-4xl mx-auto text-center">
-      <h2 class="text-3xl font-bold text-bark mb-4">Get in touch</h2>
-      <p class="text-bark/60 text-lg mb-6">Whether you want to chat about a project, try Smalltalk, or just say g'day.</p>
-      <a href="mailto:hello@koala.works" class="inline-flex items-center gap-2 text-xl font-medium text-eucalyptus hover:text-eucalight transition-colors">
+      <h2 class="text-3xl font-bold text-bark dark:text-gray-100 mb-4">Get in touch</h2>
+      <p class="text-bark/60 dark:text-gray-400 text-lg mb-6">Whether you want to chat about a project, try Smalltalk, or just say g'day.</p>
+      <a href="mailto:hello@koala.works" class="inline-flex items-center gap-2 text-xl font-medium text-eucalyptus dark:text-eucalight hover:text-eucalight dark:hover:text-emerald-400 transition-colors">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>
         hello@koala.works
       </a>
@@ -242,11 +267,11 @@
   </section>
 
   <!-- Footer -->
-  <footer class="py-8 px-6 border-t border-bark/10">
-    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-bark/40">
+  <footer class="py-8 px-6 border-t border-bark/10 dark:border-gray-800">
+    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-bark/40 dark:text-gray-500">
       <p>&copy; 2026 Koala Works. Australia.</p>
       <div class="flex items-center gap-4">
-        <a href="#top" class="hover:text-bark transition-colors">Back to top</a>
+        <a href="#top" class="hover:text-bark dark:hover:text-gray-100 transition-colors">Back to top</a>
       </div>
     </div>
   </footer>
@@ -258,10 +283,23 @@
     toggle.addEventListener('click', () => {
       menu.classList.toggle('hidden');
     });
-    // Close mobile menu on link click
     menu.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', () => menu.classList.add('hidden'));
     });
+
+    // Dark mode toggle
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.theme = 'light';
+      } else {
+        html.classList.add('dark');
+        localStorage.theme = 'dark';
+      }
+    }
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    document.getElementById('theme-toggle-mobile').addEventListener('click', toggleTheme);
   </script>
 
 </body>
