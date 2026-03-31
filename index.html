@@ -136,18 +136,7 @@
         <div class="bg-sand rounded-xl p-6 sm:p-8">
           <h3 class="font-semibold text-bark mb-2">Want early access?</h3>
           <p class="text-bark/60 text-sm mb-4">Drop your email and we'll let you know when the next wave of invites goes out. No spam, just game news.</p>
-          <!--
-            EMAIL FORM SETUP:
-            Replace the form action URL with your Mailchimp (or Buttondown/Formspree) endpoint.
-
-            Mailchimp: Create an audience > Signup forms > Embedded forms.
-            Copy the action URL (looks like https://YOUR.us21.list-manage.com/subscribe/post?u=XXXXX&id=XXXXX)
-            and the input name for the email field (usually "EMAIL" or "MERGE0").
-
-            Buttondown: action="https://buttondown.com/api/emails/embed-subscribe/YOUR_USERNAME"
-            Formspree: action="https://formspree.io/f/YOUR_FORM_ID"
-          -->
-          <form action="#" method="post" id="signup-form" class="flex flex-col sm:flex-row gap-3">
+          <form action="https://works.us20.list-manage.com/subscribe/post?u=f2efa265ecfb45865f6df7641&amp;id=790c27314c&amp;f_id=001919e0f0" method="post" id="signup-form" class="flex flex-col sm:flex-row gap-3" target="_blank">
             <input
               type="email"
               name="EMAIL"
@@ -155,11 +144,14 @@
               placeholder="you@example.com"
               class="flex-1 px-4 py-2.5 rounded-lg border border-bark/20 bg-white text-bark placeholder:text-bark/30 focus:outline-none focus:ring-2 focus:ring-eucalyptus/50 focus:border-eucalyptus transition"
             >
+            <!-- Mailchimp bot signup protection -->
+            <div aria-hidden="true" style="position: absolute; left: -5000px;">
+              <input type="text" name="b_f2efa265ecfb45865f6df7641_790c27314c" tabindex="-1" value="">
+            </div>
             <button type="submit" class="bg-eucalyptus text-white px-6 py-2.5 rounded-lg font-medium hover:bg-eucalight transition-colors whitespace-nowrap">
               Count me in
             </button>
           </form>
-          <p id="signup-thanks" class="hidden text-eucalyptus font-medium mt-3 text-sm">Nice one! We'll be in touch.</p>
         </div>
       </div>
     </div>
@@ -269,18 +261,6 @@
     // Close mobile menu on link click
     menu.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', () => menu.classList.add('hidden'));
-    });
-
-    // Signup form demo handler
-    // Replace this with your actual Mailchimp/Buttondown/Formspree integration.
-    // For Mailchimp, just set the form action and method="post" and remove this JS.
-    const form = document.getElementById('signup-form');
-    const thanks = document.getElementById('signup-thanks');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      // When you have a real endpoint, remove this handler and let the form submit naturally.
-      form.classList.add('hidden');
-      thanks.classList.remove('hidden');
     });
   </script>
 
