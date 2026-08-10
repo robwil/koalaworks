@@ -157,6 +157,24 @@
           There's no score and no winning. Just the story that unfolds from how you choose to spend your time and who you choose to spend it with. We're keeping the finer details close to the chest for now, but if you like games that reward curiosity and conversation over reflexes and min-maxing, this one's for you. Alpha invites are going out to our first round of testers right now.
         </p>
 
+        <!-- Screenshot -->
+        <div class="mb-8">
+          <img
+            id="smalltalk-screenshot"
+            src="smalltalk-screenshot.png"
+            alt="Smalltalk gameplay — a freeform conversation with Simone Aubert in The Dining Room"
+            class="rounded-lg shadow-lg border border-bark/10 dark:border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
+            style="max-height: 300px; width: auto;"
+            onclick="document.getElementById('screenshot-lightbox').classList.remove('hidden')"
+          >
+          <p class="text-bark/40 dark:text-gray-500 text-xs mt-2">Click to expand — this screenshot uses an older model and system prompt, and doesn't reflect the current quality of the game.</p>
+        </div>
+
+        <!-- Lightbox -->
+        <div id="screenshot-lightbox" class="hidden fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6 cursor-pointer" onclick="this.classList.add('hidden')">
+          <img src="smalltalk-screenshot.png" alt="Smalltalk gameplay" class="max-w-full max-h-full rounded-lg shadow-2xl">
+        </div>
+
         <!-- Email signup -->
         <div class="bg-sand dark:bg-gray-800 rounded-xl p-6 sm:p-8">
           <h3 class="font-semibold text-bark dark:text-gray-100 mb-2">Want early access?</h3>
@@ -188,8 +206,26 @@
       <h2 class="text-3xl font-bold text-bark dark:text-gray-100 mb-10">Updates</h2>
       <div class="space-y-8">
 
-        <!-- Blog entry 1 -->
+        <!-- Blog entry: Beta -->
         <article class="border-l-2 border-eucalyptus pl-6">
+          <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">10 August 2026</time>
+          <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Beta phase reached</h3>
+          <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
+            After months of alpha playtesting and a mountain of feedback, Smalltalk has officially entered beta. The biggest changes: conversation pacing feels more natural, character memory is sharper across sessions, and the "who's real?" tension lands way better now that we've reworked how human players blend in. Thanks to everyone who tested early and didn't hold back — your notes shaped every major call we made. Beta invites rolling out over the coming weeks.
+          </p>
+        </article>
+
+        <!-- Blog entry: RPG engine comparison -->
+        <article class="border-l-2 border-bark/20 dark:border-gray-700 pl-6">
+          <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">14 June 2026</time>
+          <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Play testing against other RPG engines</h3>
+          <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
+            We spent a week running Smalltalk sessions side-by-side with a handful of other RPG engines to see where we stand. The goal wasn't a shootout — it was calibration. We wanted to know if our freeform conversation model actually felt different to players, or if we were just telling ourselves it did. The short answer: it does. Players consistently stayed in character longer and initiated more unprompted interactions in Smalltalk than in any of the scripted alternatives. The surprise finding was how much our character memory system matters — players noticed when NPCs forgot things, and they really noticed when they didn't.
+          </p>
+        </article>
+
+        <!-- Blog entry 1 -->
+        <article class="border-l-2 border-bark/20 dark:border-gray-700 pl-6">
           <time class="blog-date text-sm text-bark/40 dark:text-gray-500 block mb-1">29 March 2026</time>
           <h3 class="font-semibold text-lg text-bark dark:text-gray-100 mb-2">Alpha invites sent</h3>
           <p class="text-bark/70 dark:text-gray-300 leading-relaxed">
