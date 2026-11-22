@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gen 1 Dice Battler</title>
+<meta name="description" content="Pick two Gen 1 Pokemon and watch them battle with dice rolls until one faints. Real Gen 1 base stats drive the simulation.">
+</head>
+<body>
+<style>
+  html { color-scheme: light dark; }
+  body { text-align: center; font-family: ui-monospace, Menlo, Consolas, monospace; margin: 0; padding: 16px; }
+  #appCtn { max-width: 760px; margin: 0 auto; text-align: left; }
+  h1 { text-align: center; margin: 6px 0 2px; letter-spacing: 1px; }
+  .sub { text-align: center; opacity: 0.8; margin: 0 0 12px; font-size: 13px; }
+  .pickRow { display: flex; gap: 10px; align-items: stretch; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+  .pick { flex: 1 1 220px; border: 1px solid #888; border-radius: 8px; padding: 10px; min-width: 220px; }
+  .pick label { font-weight: bold; font-size: 13px; }
+  .pick select { width: 100%; margin: 6px 0; font: inherit; padding: 6px; }
+  .statLine { font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+  .vs { align-self: center; font-weight: bold; font-size: 20px; }
+  .controls { text-align: center; margin: 12px 0; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 8px 18px; cursor: pointer; border-radius: 6px; border: 1px solid #888; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #fightBtn { font-weight: bold; }
+  .toggleRow { text-align: center; font-size: 13px; margin-top: 6px; }
+  #arenaCtn { border: 1px solid #888; border-radius: 8px; padding: 10px; margin-top: 10px; position: relative; }
+  #quizFlash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: bold; color: #fff; border-radius: 8px; z-index: 5; padding: 20px; text-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+  #quizFlash[hidden] { display: none; }
+  #quizFlash.good { background: rgba(0, 170, 0, 0.9); }
+  #quizFlash.bad { background: rgba(200, 20, 20, 0.9); }
+  #hpRow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .hpBox { flex: 1 1 200px; font-size: 13px; }
+  .hpBar { letter-spacing: 1px; }
+  #logEl { background: rgba(128,128,128,0.12); border-radius: 6px; padding: 10px; min-height: 220px; max-height: 420px; overflow-y: auto; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+  #logEl .round { font-weight: bold; margin-top: 8px; }
+  #logEl .winner { font-weight: bold; font-size: 15px; }
+  #logEl .crit { color: #c00; }
+  #logEl .miss { opacity: 0.75; }
+  #logEl .super { font-weight: bold; }
+  #quizCtn { border: 2px dashed #888; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 13px; }
+  #quizCtn .q { font-weight: bold; margin-bottom: 8px; }
+  #quizRow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #quizInput { font: inherit; padding: 6px; width: 130px; }
+  .sprite { width: 96px; height: 96px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .hpSprite { width: 48px; height: 48px; image-rendering: pixelated; image-rendering: crisp-edges; vertical-align: middle; }
+  details.how { font-size: 12px; max-width: 760px; margin: 0 auto 10px; text-align: left; }
+  details.how summary { cursor: pointer; text-align: center; }
+</style>
+
+<div id="appCtn">
+  <h1>GEN 1 DICE BATTLER</h1>
+  <p class="sub">Pick two Pokemon. Dice decide everything. Stats decide the odds.</p>
+
+  <details class="how">
+    <summary>How it works (dice + real Gen 1 stats)</summary>
+    <p>
+      Each Pokemon uses its real Gen 1 base stats, converted to Level 50 battle stats
+      (HP = Base+91, Atk/Def/Spc/Spe = Base+36). Each round both roll
+      <b>d20 + Speed/10</b> for initiative. Each attack rolls <b>d20 + Offense/25</b>
+      vs <b>DC 12 + Defense/30</b> (natural 1 always misses, natural 20 always crits).
+      On a hit, damage is <b>d12 + d8 + Offense*0.35 − Defense*0.15</b> (min 8),
+      x1.5 on a crit, x2 / x0.5 on super-effective / resisted hits.
+      Attackers use their stronger offense (Physical=Atk vs Def, Special=Spc vs Spc).
+      Battle ends when a Pokemon hits 0 HP and faints.
+      Three times per battle the fight pauses for a math quiz (HP left, initiative
+      total, hits-to-KO): each correct answer earns your (Player) Pokemon an
+      immediate bonus attack — get all three right to really tip the battle!
+    </p>
+  </details>
+
+  <div class="pickRow">
+    <div class="pick">
+      <label for="p1Select">PLAYER (YOU)</label><br>
+      <img class="sprite" id="p1ImgEl" alt="Player Pokemon sprite"><br>
+      <select id="p1Select"></select>
+      <div class="statLine" id="p1StatsEl"></div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="pick">
+      <label for="p2Select">CPU</label><br>
+      <img class="sprite" id="p2ImgEl" alt="CPU Pokemon sprite"><br>
+      <select id="p2Select"></select>
+      <div class="statLine" id="p2StatsEl"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="fightBtn">FIGHT</button>
+    <button id="randomBtn">RANDOM MATCHUP</button>
+  </div>
+  <div class="toggleRow">
+    <label><input type="checkbox" id="instantInput"> instant result (no animation)</label>
+  </div>
+
+  <div id="arenaCtn">
+    <div id="hpRow">
+      <div class="hpBox"><img class="hpSprite" id="p1HpImg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURQAAAP+cRxILC//t/9FHKAAAAF3LkGEAAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAANwSURBVGhD7ZfZdqMwEESHxf//y1ObFAsjKYHM01CxQTRWXXU31nH+vP6xHsBUD2CqBzDVA5jqAUz1AKb67wHLkkFX3wSs65pRq98CrNuygHECuQFo3NYNiH3vJTJQF7BuR8IufSLGSXwX8FrtfoIY96EHQNXPAPjjKTGvfoF8daYu4N2GowAOSch6SOgC2NIyZrXkS8gxiWuAVc9MuWgBHwQCuoQRoJgcAQeC/LuELkCGGq4AuPL7TqcjQfZQLg/qAfS8cOE8bTzgFaeWkODPAEgAjyksvHKnU/zVHgJESAjy1KN6ABMAoASoCUC7IyQkQmVyqz6ABEjOOi2nhASoTG41AIjAtu6qCQbrsnHTUyhZBaDuZ3KrHgCOKM1bXzUSQYyaAsOXATgtWTHEM/yMqCno9s8BfExwkJsdVCO4JomtScH0TG41AmS1qggaTQ8oiKbNVwGyJ4DjAgBC0bcUcGQ8k1udAujOl4yYAB+pAHZcC/2WggGZfFAXACevFA0EK4CNQecATxGuAZg3t7gAtGfIH8YiYFhT4KHn3wfACBR+2+TCnNwTQUmoKfCdmZ8aAVAJ1iaEAnAKuLwPEAG2qI0A9ncKArg6KN5VAAjsrPQF0A0sXq2R/xVA9cleQTfZIyfd4OrZ+on/AIDHSMXRUTUygGABLLMz8UR9QEkBA5hwvXSuCQRg+A0AimCC/dUJeQpg+5H/NwBesr5z1TH+Hl0D0BUEjCTCmAhz8fL9loa/6acAEmSPCyQiQrHWGfcz7VSnAPwa0tcWHBnYH0CE7ZpCMTkos07VA8AKTi5HEiBQXz2nIcQdAOtkQOwh7E98yd/3Zv4dAAnqhDziToGW8n0RMqWjDgAEAtxje1fpASiEywD8V6MqUfKrKh0pgHy+py7AjfCWFkurXoWQT/c0ALzQAzww8Iij9YsA5ACb9jnSJhvdB+CfJ7g0BJi2KdwDYLVaprcOOfJS9hATuAdwCiYU0ZQIRDi8CQDBprCKPRcNBPqTy3yyoxmgEvSNkBx2bnPCpAc0xN4JGw0TplilANY9sTMNAawDbehPo4Qt+OIOqOj1IIkRgL/tbKD1t+tk6dBsmPNp6hNGAOycrEL21ASL1AOb85Dop2YlqkroS7i5l8OgCeMm/4IewFQPYKoHMNUDmOoBTPUApvrHgNfrL8yrnos+2svBAAAAAElFTkSuQmCC" alt=""><span id="p1HpEl">—</span></div>
+      <div class="hpBox"><img class="hpSprite" id="p2HpImg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgBAMAAAAQtmoLAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAPUExURQAAAP/t//atgnpokxILC3hWN/YAAAABdFJOUwBA5thmAAACkElEQVR42u3WTY7lKgwFYKvDBo5vFvA4eAEXyAIw8f7X1INUVfckP9N+up5EivIJLAcbkU984hP/34jjsY2H3y8Yx2N9CNLxZYKOpwBjibeDjwF3Rzj4fgwygKrladLKDBjUHoKqBLTg8QqODGiFPkz6F75CHya9/AHbjyhxtaMf0OxrUwWIi7L9gEL7s+iZqAA0f4N1fL87rbsDyEDPIEtGfC2wTtopUGBrJGmO9WuXI52BAF5Y8wES8BapwEtknuxpU1QNaCY5xDFEHFhF0glIL2TboFByiKvdgaVBtw0VJEcK2pGziLTTrOleALLYtIijMkNknoOpgJKFJHQkAHhfAQWgFo2NGWskALBzUAGs1TyCLBkrhgMo5zkswMvXkep0dmbH2wHVkbid9bGXr1Oqe0VjdqwOgO/lFEjEW6S6vwDiAKrveQ5ERN6/HAABgyUgc+P1ARwMaLSsAUuAqrGMy1ZjYxZas+EayJk3IOmQ5KDNcA1VZblOIfH4S0kLzMgk90vQ7Cihks2Nk2Rcdqndvo4+C12nkdddbeEQSegZWtR05nkDEodIUhZohbWZ2w2o+p/I1siKCtOZ11tgIl6VHVULXnjdAIfJAj+AYwVmeQAmS6+NFfYERMKLpbRiUIPeAkdgZWu9dKiBs19PLbgOx15Kbw5tdz+GLHAOh/UeUcHJ0rebyWthSXXf1ABOWr+ed6mTJs4SrFBO9jvgjX0kMu+A2m0KsmAtWCXRA6ApbdwB27FK2rcdyt2Z70b2tGBI9E0ruTvwulsitojQstG6dce9kOgdYI/QffN+zJTrSlQAZN8ijR12jIhL4AC5xTjqyNsLXUyWiO8Ta8Hb21P6q6/EkHh6Kf3EJz7xD8Zvem2L/cacklMAAAAASUVORK5CYII=" alt=""><span id="p2HpEl">—</span></div>
+    </div>
+    <div id="quizCtn" hidden>
+      <div class="q" id="quizQEl"></div>
+      <div id="quizRow">
+        <input id="quizInput" inputmode="numeric" autocomplete="off" placeholder="HP left?">
+        <button id="quizBtn">ANSWER</button>
+      </div>
+    </div>
+    <div id="quizFlash" hidden></div>
+    <div id="logEl">Choose your fighters and press FIGHT.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ORDER = ["charizard","blastoise","venusaur","pikachu","gengar","alakazam","snorlax","gyarados","dragonite","mewtwo"];
+
+  // Fallback copy of the same real Gen 1 base stats (used if root.pokedex is unavailable).
+  var FALLBACK = {
+    charizard:  {name:"Charizard", type1:"Fire",     type2:"Flying", hp:78,  atk:84,  def:78,  spc:85,  spe:100, move:"Flamethrower", moveType:"Fire"},
+    blastoise:  {name:"Blastoise", type1:"Water",    type2:"None",   hp:79,  atk:83,  def:100, spc:85,  spe:78,  move:"Hydro Pump",   moveType:"Water"},
+    venusaur:   {name:"Venusaur",  type1:"Grass",    type2:"Poison", hp:80,  atk:82,  def:83,  spc:100, spe:80,  move:"Razor Leaf",   moveType:"Grass"},
+    pikachu:    {name:"Pikachu",   type1:"Electric", type2:"None",   hp:35,  atk:55,  def:30,  spc:50,  spe:90,  move:"Thunderbolt",  moveType:"Electric"},
+    gengar:     {name:"Gengar",    type1:"Ghost",    type2:"Poison", hp:60,  atk:65,  def:60,  spc:130, spe:110, move:"Shadow Ball",  moveType:"Ghost"},
+    alakazam:   {name:"Alakazam",  type1:"Psychic", type2:"None",   hp:55,  atk:50,  def:45,  spc:135, spe:120, move:"Psychic",      moveType:"Psychic"},
+    snorlax:    {name:"Snorlax",   type1:"Normal",  type2:"None",   hp:160, atk:110, def:65,  spc:65,  spe:30,  move:"Body Slam",    moveType:"Normal"},
+    gyarados:   {name:"Gyarados",  type1:"Water",    type2:"Flying", hp:95,  atk:125, def:79,  spc:100, spe:81,  move:"Hydro Pump",   moveType:"Water"},
+    dragonite:  {name:"Dragonite", type1:"Dragon",   type2:"Flying", hp:91,  atk:134, def:95,  spc:100, spe:80,  move:"Hyper Beam",   moveType:"Normal"},
+    mewtwo:     {name:"Mewtwo",    type1:"Psychic", type2:"None",   hp:106, atk:110, def:90,  spc:154, spe:130, move:"Psychic",      moveType:"Psychic"}
+  };
+
+  // Simplified Gen 1 effectiveness for the types/moves in this roster.
+  // 2 = super effective, 0.5 = not very effective, 1 = normal.
+  var CHART = {
+    Fire:     {Grass:2, Fire:0.5, Water:0.5, Dragon:0.5},
+    Water:    {Fire:2, Water:0.5, Grass:0.5, Dragon:0.5},
+    Grass:    {Water:2, Fire:0.5, Grass:0.5, Poison:0.5, Flying:0.5, Dragon:0.5},
+    Electric: {Water:2, Flying:2, Electric:0.5, Grass:0.5, Dragon:0.5},
+    Psychic:  {Poison:2, Psychic:0.5},
+    Ghost:    {Psychic:2, Ghost:2, Normal:0.5},
+    Normal:   {Ghost:0.5},
+    Dragon:   {Dragon:2}
+  };
+
+  function dexEntry(key) {
+    try {
+      if (typeof root !== "undefined" && root.pokedex && root.pokedex[key]) {
+        var n = root.pokedex[key];
+        return {
+          name: String(n.name), type1: String(n.type1), type2: String(n.type2),
+          hp: +n.hp, atk: +n.atk, def: +n.def, spc: +n.spc, spe: +n.spe,
+          move: String(n.move), moveType: String(n.moveType)
+        };
+      }
+    } catch (e) { /* fall through to fallback */ }
+    return FALLBACK[key];
+  }
+
+  function typeStr(e) { return e.type2 && e.type2 !== "None" ? e.type1 + "/" + e.type2 : e.type1; }
+  function bst(e) { return e.hp + e.atk + e.def + e.spc + e.spe; }
+  // Authentic Gen 1 Red/Blue in-game sprites, originally vendored into src/images/ on Perchance, now inlined below as data URIs
+  // (source: PokeAPI sprites repo, versions/generation-i/red-blue/transparent/).
+  var SPRITES = {"alakazam": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURQAAANGcABILC//t///kaAAAAGm2+EQAAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAAOySURBVGhD7ZjhcqMwDIQPSN//le/blUzSBMmkuc7cD3amsbHxfpZswNM/X7+sCzDVBZjqAkx1Aaa6AFNdgKn+Q8Cyruvi2rq66HUOsC5Lmi3rhm5CLNt2gjADeJbrTZ6+lPttXfVH9VMA2di2xf5BYNJRAUEXNW7Jmwt1ANmtm6a7+yoUKiyDms+E0QE8Wj4iyBeAXF2w0ixMhNGpBGizaDROYWsfWwfHuylQHaICaIvk6FC2R41fCIpAoKULogIw+xjN8KM5OkMQTHk/AkaFuabHCrDU2ZMy3/1SNh7qELBoSUnBbuHVzk7kp+2ev/EQHuo4gn2kpBBkmC8IGn2pRfAWoHDHsao12CGxZ2QY6fazNvzV5aXIMQdqAM4AY+UiowxEv752fK50hBKgdcihJiy2t/nw567o6ggVgEx4pGbpaQ5/u7vH940QSkIFWIe/Bz8D1Mg9CIIu3gaMibGmlLpK+3sAyY7i7RTFKAUQbk8BaGtGD6UQ9cNWpigHq3gERAAJyODYbvXbqAI4waQnQDzX3/zVqoVJAIQc9aoSgEAwFhMADsFmDoDfQLu7tu8BSN4kCrvwlsI/CIozby00AQjhNKQpwvUOqHfP0BQAgtQsG3ZpT9WAE9NHcwDvTgHiA4cpNbNmyU/NAXp96jlbN2yZPgcZdNb/TIr0ecEPhADh7/T8K0Du18iOV5ZqMLK/0ymACZwdnP60V5m9rU4CcGMFIj3QMoTsbXVikTFMgPfOuD6VoDlgHNdRAmRPhdY8BfSqAOMEIXuEY4Swh+K3XwbRJasCeEieIBCGAxD+2Z7zaE7YBSCOm2P+kSK/tQnA9eyI85jO+B52oAIQ+z7nGa97nHnUaM1ljj6thOZRfnFqwJ6IkWF8SJT2J4TH/CHuLQjlGiSBSLKFNs88/e/5Q7V/CdCnJjRGKjn21893gu56FzDshz+2+sI8BOEzZbhbBaGPwH72lZOdQ9G4zwK9GwHCICLxdrJJ2ts/SjV7HjnoRQ1A8tOFEYVcKMJX9SxR3nyoKcDS8vrSuNi3GOthUbXTDDAmOq4dT9Ydz4wwA/ASgHF3MTCrCY+rSj2Ap/UhKdbuSDBP8EP1AL8dikR4585z1AJiE9rl1SYAU0IHiAN0mLy+8SN9nwBwwJjThNcyG3cJLPufA/Q61p/W8cDD0Um3/h9GNcA7VJ+sYiPqk6NOzSGbjtSkSMMKc0t0iuMAd3WLPFNrPPQJ4JQuwFQXYKoLMNUFmOoCTHUBpvplwNfXX9NXoX+TirRkAAAAAElFTkSuQmCC", "blastoise": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAD1BMVEUAAAASCwtok8mlye3/7f+aVmd4AAAAAXRSTlMAQObYZgAAAn1JREFUeNrt1oGmM0kcRPGcU/X+z7x2+m/Ssgtp+ZZlCpLA+ZnbfZnXs/9uz549e/bs2TP4w/3IS2Y3+jsVAU2bJFcYmvxMAJz+PARNVH4GqJJCArL68GsA0hbVyA/7GYHCAHLtN2cNmGSi774JROG8Lb5WPpDEe2AiEfBUUICUNrM3gQkJnAtm9f9e7jkDJZVzgAJMfxeCCpC0gseAyNUXAIdo0Ok3enrOtrmAkCTOybYZ4OpHhTOBJjL9RQi5+3n31XMBk7ZvAkXC3pcjYITtJnkNQ8oFAKbRE8AlOMIAgqEt4PQTTvpKA5gNALAsG+DqxzNAgCGSKPNLmL5t4olAlFvZlyQySxNNOLlDK/VppH0L9hwI7Wq9B8yBjJr5fgLQtcwuYfWV/QHOANpPYQCBNgFyDOC/CiQRpElcgNf4vi98AmCERBIHOOuLUdkEQBSWpYKZ/ncAEZOo3FshIdstxbgkvgUyl3HbgG0TBp9PvwOM9OOfYE55ZObHzO8AA3we8BtIa9pN8EuAKtLOdgBIQubpJp98BdhIhE+BtQHmeYJJDg453sTUnQMlZPWFli/6M5D9b3znBdjuPwkk/RpIoEmczSauYbT2pP+yhH/eUpaiSQUaIMk3/RkWPi8pSQZoW2kxOXyFB3rv7idvoN7n4hnAB9DewCUE9PjtF4GP/iZc3wE4AUYQzPQjO2CS6Fl/RlzEam3ACOpxf4Qo90GyvwG7dtif0a4aM6ev3qxw3qf5FO4+zMfrvN/QwFaB6c9O89NvhNS9w9qtvM4HiXIxuxsU4Fy4x7XGvZ8IjQKJN34++ERpl5NkgB/vEljan+hP+dmzZ8+ePXv2f9pfbOsS8+bBN58AAAAASUVORK5CYII=", "charizard": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURQAAAP+cRxILC//t/9FHKAAAAF3LkGEAAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAANwSURBVGhD7ZfZdqMwEESHxf//y1ObFAsjKYHM01CxQTRWXXU31nH+vP6xHsBUD2CqBzDVA5jqAUz1AKb67wHLkkFX3wSs65pRq98CrNuygHECuQFo3NYNiH3vJTJQF7BuR8IufSLGSXwX8FrtfoIY96EHQNXPAPjjKTGvfoF8daYu4N2GowAOSch6SOgC2NIyZrXkS8gxiWuAVc9MuWgBHwQCuoQRoJgcAQeC/LuELkCGGq4AuPL7TqcjQfZQLg/qAfS8cOE8bTzgFaeWkODPAEgAjyksvHKnU/zVHgJESAjy1KN6ABMAoASoCUC7IyQkQmVyqz6ABEjOOi2nhASoTG41AIjAtu6qCQbrsnHTUyhZBaDuZ3KrHgCOKM1bXzUSQYyaAsOXATgtWTHEM/yMqCno9s8BfExwkJsdVCO4JomtScH0TG41AmS1qggaTQ8oiKbNVwGyJ4DjAgBC0bcUcGQ8k1udAujOl4yYAB+pAHZcC/2WggGZfFAXACevFA0EK4CNQecATxGuAZg3t7gAtGfIH8YiYFhT4KHn3wfACBR+2+TCnNwTQUmoKfCdmZ8aAVAJ1iaEAnAKuLwPEAG2qI0A9ncKArg6KN5VAAjsrPQF0A0sXq2R/xVA9cleQTfZIyfd4OrZ+on/AIDHSMXRUTUygGABLLMz8UR9QEkBA5hwvXSuCQRg+A0AimCC/dUJeQpg+5H/NwBesr5z1TH+Hl0D0BUEjCTCmAhz8fL9loa/6acAEmSPCyQiQrHWGfcz7VSnAPwa0tcWHBnYH0CE7ZpCMTkos07VA8AKTi5HEiBQXz2nIcQdAOtkQOwh7E98yd/3Zv4dAAnqhDziToGW8n0RMqWjDgAEAtxje1fpASiEywD8V6MqUfKrKh0pgHy+py7AjfCWFkurXoWQT/c0ALzQAzww8Iij9YsA5ACb9jnSJhvdB+CfJ7g0BJi2KdwDYLVaprcOOfJS9hATuAdwCiYU0ZQIRDi8CQDBprCKPRcNBPqTy3yyoxmgEvSNkBx2bnPCpAc0xN4JGw0TplilANY9sTMNAawDbehPo4Qt+OIOqOj1IIkRgL/tbKD1t+tk6dBsmPNp6hNGAOycrEL21ASL1AOb85Dop2YlqkroS7i5l8OgCeMm/4IewFQPYKoHMNUDmOoBTPUApvrHgNfrL8yrnos+2svBAAAAAElFTkSuQmCC", "dragonite": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgBAMAAAAQtmoLAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAPUExURQAAAP/t/+SccKVoPxILC6QzLVUAAAABdFJOUwBA5thmAAACd0lEQVR42u2W3a3kMAiFLY0bwJkGfOwCZgwF+If+a1rh5GofVnFy9zlII2UkPgPmQOLcY4899tj/mrefOr0N9I9zbdNY9796SbbqPKEdfp5CvQY65F1/AMo3AG7jcGsBqEdl5zV07gfgY1bYY/mc31JyqmHMc52H9m6P/bwSnwfyW8r06NAuFqKnRU4dOfOeU89dNgvRF6V3CTlD8sxodNksRMN5EZoJHVlmetxk447acFqEfzcKMaRhpQ7ZZGMx4DSCJ6JAeYxqAWTjxtxzC2kFgL45V9fHAQhayEsgaM7qlc27qap+FxEGEZLmpDoMEN01eF5E+wZI0yQTkHqI9vyaVAtYe2K1lHa31wrwGgCAmXXI+4i6Apx2AGUws+jh9V0C3iL0wVwA0eptBAlXQGbmEgOStOxea8A15AkIiEJSrVbCQn2udWBY1cMIbhoDkFarCZBi9yQlEqV5CVjtAq86YthDREptArLwH6JsRzMrA/Iu1hZZ+LPo1yRojbD28UzvtG0tJNGp8cSiqmItZK6nA0dgsawpgHUg6Rp4KZi1kc1d4BFN6uYv5xH4AEIMXIgCrBDRxR5jMSBE2nYg2cidb/2e1fY3IlFJ0QBY6Qvp1al/ImLcAvYwQLLbjyZTsF6+h3QOA6f7wBxSpGIZGXCRkZ/NArhPYfNlAD+mQBNkXwdy9WL0aZh/AY+5PuTy5Q6xkUZimTriy5RCMk2nuZuW0vu7Bg5R240OXCfVwpwdngMxU7vMyc42Gepw3WavXrZapkZ1uHuA291nh30M1534YSZQIJrdPWIerNKgvwF8y3QnJduAn2Oobn7R2R099thjj/1rfwAMuKkGQYxakAAAAABJRU5ErkJggg==", "gengar": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAD1BMVEUAAAASCwulcLbarcD/7f8APxhdAAAAAXRSTlMAQObYZgAAAYlJREFUeNrtlYGKHCEUBO2q9//fnETczI3cBDgdCGBxt4MLdNG+0W2Hw+FwOBwOh8PhBtxWbTuGv8kwFmwV9NDQGsl42AaibRES+kc6cOULwQ0VQm4ANoX0/FXIdwDZk9/8Pj/b8iEPYNsA4dV88wTClrf0AZLEzQVm3DyBGcDlAkj+Ba4KqtidPwuK9/IJVr4YkH35XRAuAc51gAWJSE81f6A67NokoQsCIyn1G3fmI7moVElXbspPZN7wedCs3dFjyHeLbhHkIwjDFhSV4j6Dn0jIJQhFYWFJVc1HgbAoiEVRRfV/ma/tn1YAYYiqPn+y5dYWsDWGgZ6NJdfRWBu0Dk0+qPbV9aWrPzsCmdBJQPs5CnM8Vz5MBdYr3NcwFViu4M2GCbgmQKb8SWBbAoQnwYZ8IcLTBu0RDMMkwOkMrF3an+c9ntUKXzanZxvCFU8WBTK9QMTYbZ1kuYFkAAo0Gkgn7BiCdHTuBmSqsBO9DLZXuAy8aWAI3lSA7UWDajscDofD4fBf8wtvQAkm7vAzIAAAAABJRU5ErkJggg==", "gyarados": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURQAAABILC09wtv/t/4qc2gAAALqb4KcAAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAAQbSURBVGhD7ZfblpswFEMLYf7/l6stHadAMJcks1YfUKbBQKxt6xgn/fPzy7oBh7oBh7oBh7oBh7oBh7oBh/oPAUMdpWGYnXR0CjCO1ZDGR0xlPj6qvaczgLnR4LbNpWP/U4CYRsDKfZpO+J8EPK3EmqayP+V/BqDxxkux4xx3+c9qPHZh+wAXd6ww5A4r7jqAKt95iCvtArJilBAggoq/Rl6Ef/4fAgbimSbNRcdxHKcB/8pl3PPfBwx4yF+2eAwsILkjEVIB2yfDTZ0EyMSIspfUFqHs+/7bgLY6SEWLXm8BMPAm5iJE/C8DGBwa5a3uAWD0JKgaJuQqpXGHV21HpM7uMRjQcrBC4EIIOWXFbiM6NaCzOgxyAWCXyG0mFEJOTdheST3AwwQBZBQXpdAUwJOw598DiCAEK8UAFFOrzSgA++sD1XOlHYDWqBwAyAtf2QH1c2zpNpHx+F1+kmWqfg84k40lvMs+pzwVmgL2VwEk49g5Ps39lAmQc72rib1CewPAxA2IG+sQ/4eMuRF/ZsBneyXerQGG/EmxIDYuWzV+rQLf7fl3Adou7Ohhq8m21Py1fQTA6xNABu2JZNBp4K+XCQwD/zcArXqZgtcMkT8JFh95E8DIgmi1sHIOpEpNeF4O1e9FuxF5vFjO7CWa3OGm3zmtbi/qArTfpTcIp5Pv/MgZcc9nOtCujkv1AaSExGEK7BR2kzCnBGb4XMdOHfYAqqUBIuit/LkkOSoQ2ZAcZPVbaiciP6X2ouL21wXvnbws3Wb4aVfHpfYAyUgR6XFlrBD4klz4S2lfBeDPDBSKXPVW8YxPd4nxtwl0CLsA+3vgOmOtIE2mDOMPQm1uVdeFegAXjvFa3vSpCukQ1AzALzxf216nPcBiApmBLub7kQvc9I5BXroN7TLAe52FvyOub2CQRIMM4FA/VVfqAjQiAZSU/R2Yr8ef0deW5xUmgt7cc6UOAD9clDY9+XldAM/AzvYn+7QuAegje4z0jwkUQKeKRFOyIRVwWAZs+m8D6puETYJKMAGKoju6yuph0ZCRK6xGztN5pU1Ai8TudG8A70szACc4M6Mru6nMKxE5UFGapuAOAP8QPHSGcWkG2OTzcnGjEiIiTwlDfnsnmhD53Is6RRahmiUDnRCjTVG1olxhHsCefwegLtVoMiAz4zGzv3gExf9XNKdLM3gVACoCIAQWGDMApCf+UwBPgP7s752CbAjGaxXAxa3iRYy++bcieB7sc/h/CmAFYVUljrnzkbWYHOqTC50HeLE7HwkC5/UwfwfgmJAJBmgBkVD8vwAgDqmmQOQqASnp7SuATGHmzyUecvYuFvKGrgH0KGBPpesCYhrAvwEQwtmv5Aub/tcBV3UDDnUDDnUDDnUDDnUDDnUDDvXLgJ+fvwynnLBuBtA8AAAAAElFTkSuQmCC", "mewtwo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgBAMAAAAQtmoLAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAPUExURQAAAP/t//atgnpokxILC3hWN/YAAAABdFJOUwBA5thmAAACkElEQVR42u3WTY7lKgwFYKvDBo5vFvA4eAEXyAIw8f7X1INUVfckP9N+up5EivIJLAcbkU984hP/34jjsY2H3y8Yx2N9CNLxZYKOpwBjibeDjwF3Rzj4fgwygKrladLKDBjUHoKqBLTg8QqODGiFPkz6F75CHya9/AHbjyhxtaMf0OxrUwWIi7L9gEL7s+iZqAA0f4N1fL87rbsDyEDPIEtGfC2wTtopUGBrJGmO9WuXI52BAF5Y8wES8BapwEtknuxpU1QNaCY5xDFEHFhF0glIL2TboFByiKvdgaVBtw0VJEcK2pGziLTTrOleALLYtIijMkNknoOpgJKFJHQkAHhfAQWgFo2NGWskALBzUAGs1TyCLBkrhgMo5zkswMvXkep0dmbH2wHVkbid9bGXr1Oqe0VjdqwOgO/lFEjEW6S6vwDiAKrveQ5ERN6/HAABgyUgc+P1ARwMaLSsAUuAqrGMy1ZjYxZas+EayJk3IOmQ5KDNcA1VZblOIfH4S0kLzMgk90vQ7Cihks2Nk2Rcdqndvo4+C12nkdddbeEQSegZWtR05nkDEodIUhZohbWZ2w2o+p/I1siKCtOZ11tgIl6VHVULXnjdAIfJAj+AYwVmeQAmS6+NFfYERMKLpbRiUIPeAkdgZWu9dKiBs19PLbgOx15Kbw5tdz+GLHAOh/UeUcHJ0rebyWthSXXf1ABOWr+ed6mTJs4SrFBO9jvgjX0kMu+A2m0KsmAtWCXRA6ApbdwB27FK2rcdyt2Z70b2tGBI9E0ruTvwulsitojQstG6dce9kOgdYI/QffN+zJTrSlQAZN8ijR12jIhL4AC5xTjqyNsLXUyWiO8Ta8Hb21P6q6/EkHh6Kf3EJz7xD8Zvem2L/cacklMAAAAASUVORK5CYII=", "pikachu": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAD1BMVEUAAAASCwvRnAD/5Gj/7f+w919nAAAAAXRSTlMAQObYZgAAAW1JREFUeNrtloeR5EAMxIRu5h/zl0yL78py9u0gAKCoI2/n2Gw2m81ms9lsNn8OWuSxj58CE6tAb6ALgngpjmEBdaD16PEnMC68fiQB8ScwKEicgfhtSfEnMEFVbgk+iT+BGZS7QH3nL813E9viQlXtnw+QzRH1QDnf32N/T1BNK8kfY4Qvfw/A1wVmhaB6C1wFHWFNgYIE6BH6JFacgevC4F5MpPgnoDqhHqQqlvp1F9qv0tjfYFWR/bkLZe7C3J8bQFWgenC+EZr6Y23of03AuIC+KyBhK3kYB0SVT25/iaousGRLfVO9r7lfseTXILz+EplAU7/KTd3o5PYvGyABx89nAre/qky/mrww0KfGO4CHATduv8kAHgUEcsMbEM8K2eM7c0P0EuoVXVfAl99W9GsLQs5dxz8HhC69vmnlzbEG8vuVAnk2LYOTd23VD7PlgGwSWFsISLwBfzCw/hsFOP43NpvNZrPZbDZfAPq1CUX13OMvAAAAAElFTkSuQmCC", "snorlax": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAD1BMVEUAAAASCwvkcKX2rcD/7f/vjkwHAAAAAXRSTlMAQObYZgAAAixJREFUeNrt1jFu60AQBNHtrr7/mT84sxBF8TsgtQ4M8AUKuzArwfB4/ODxeDwej4fH75LWFjSOLEkr9+PPAyRr4X40hnzc97KC2AKKxuQZsJbtIyU6HFDEgn3bSOmAmAdM9pcJK6Uqw4rmAQBdMl8+z4SkBA3JZKIT4y6THU5iCUiSmVHh7gF5h3rPpKiLhfsPhG1SHFRIU4KKufsFu5BmNb8KaLIN1zJygm2D2fdbkj6wprW7+EKeAafHdlHqwqpYk28F7FMgyFaK6qNYvhjAjQ7YbwcE8Sq49q1bP6Leh9p4HUAVLCXu62x5XNAb9D5gSQYnUl6zUZ3AjT/giANJAlCEsiFYTrXcB1wi88bqC0CEFGp7ntAH3C1YzQRIJnfKFZDHRVYnrB0J2TkTun4Ask56/VQA3TvglMgHdxFL4yptbPsUOJ0AFjcCZ84nkQDybwUsAEteEiCfkAEh+RcDVpIVAZ8DWLYiacUT8f+ARG4ErE8GzgEJiVwPoAMnPwWszbhMb7IRpwKofRUwdhLEqYA1+XbA1FBSW/4pwLjsOGgkE0F2cO+Ahud8s0mQ2ROAihl32JAdSSSxmfP45nqb+9jMwny1nTy+oAq4zK9hMsUS474+gP3/X7TzRqsOALta2egNawJ2B/DxDHl8GSDBhQRwvG5/BvJ+gLRmv5nDzxTQOzO+RJ/A63PhfBPvvHK9IXaabMYyWDTJGxiL4dOjrEYZf9/j8Xg8Ho9/jYUT17g96XIAAAAASUVORK5CYII=", "venusaur": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURQAAAD+cTxILC5zRev/t/wAAAFKklJ0AAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAAOFSURBVGhD7ZfRspswDESvSfL/v9w9K5kELpaTdPrQGe/0gm3wHlkykP48/rEWYKoFmGoBplqAqRZgqgWYagGmWoCp3ga0TWrZOfUqvQlo2+12l7YterRvt+jVeg8Q9q3JVZ6bWZIQecNY7wAIX54NgAj2j/Ybi5gBnGyLkGUvUx3c2a9VxSgBcrCTdFMb501luOtE7K2nSmNDRgE4ZCbS8YwZnP192Rdz2kljgJPxBLQmE4Ua0iJufTwAupoTjxoC8Jdnz4J82Jxtk50PGyN5MW+9JFQAOSRBCXDcL4qRuJq3fgbQhACQXqzdcDpYQ5YABvKtOfOoWQ1wJUrk3n7IQTHoSR/WIAARvOR8e0S14NzHpFzGpwARYrfgoRSQHVmlyJPHwG4/Grj2rwCI0PYUaavHk9DUeI4Og7dqgJcuYYSL9yaiHaOhMWG+gg7B4xWw07nHN19qAlAq0seWyo6eMv3zi6FfKd+oM8CO0MkNSs+BKzEet400S5EBNtVfPF8WZfalvHGoSZHZNNhhnwg/3VhLeVulCkDGvS0DIbkAMeJT3lhpDHBB7RWvGoJ/GaEhkalSQ4CykW7hjHr8+yWvTK2cc6URwNH6NSPRNoTn1wMelgKhbk77rRLgFw6vNxvGQGQfGtWmrQRCzIlnjVPEJL8NImCB6OrQ/Z0iQ6KbE08aF5ldjr9jTi+H7CURtRF0IoScdlIBeNg/fFF+3yIvkhn+y1ZOO6paAQmyn5zdTAIRE3IyjBhWYQwgFdh1f2ztLwCWvxk58ahxke/sn3AUgD27r6ATjPgW0O6NLZM1YPdrEWo56AMhAALlzKNGAOz046oXWethSW6y8fFLCAheGNf+FUDeDvq5R3dFzGQQQk651gjQf6UcRMB5jvCjUxKqIisXzjGRcnzR01/j3wGUVr/XUqq2jvbm6BIohXPCGMCDkMLRP6d7RwcA8fR9C8AyDZ1oncPbQxL+AKSCUAJYvhMt2ZM3awf48f5rgCPfAV7Pvqqn/3cAWbCE+K8MNQhj540RY6cLqIucn8MUbsFIZvf/FkCM7E9nAi9BGLNlp0jDr6VVAFgC03fJ1iCbesCtcgElgI+mHWQRlmn/SnVN8v4r1QA+8vyxmjt1tj2AvEpbp7j9UiWAJfT4dFKTD9tuGEOcCtWAX5obnvUh4HMtwFQLMNUCTLUAUy3AVAsw1f8OeDz+ADxinn70sRrzAAAAAElFTkSuQmCC"};
+  function imgFor(key) { return SPRITES[key]; }
+
+  function toBattle(e, label) {
+    var bAtk = e.atk + 36, bDef = e.def + 36, bSpc = e.spc + 36;
+    var physical = bAtk >= bSpc;
+    return {
+      key: e.key, name: e.name, label: label,
+      types: [e.type1, e.type2], move: e.move, moveType: e.moveType,
+      maxHP: e.hp + 91, hp: e.hp + 91,
+      atk: bAtk, def: bDef, spc: bSpc, spe: e.spe + 36,
+      base: e,
+      // offense: stronger stat; defense: matching stat (Atk vs Def, Spc vs Spc)
+      off: physical ? bAtk : bSpc,
+      offKind: physical ? "Physical" : "Special"
+    };
+  }
+  function defStatOf(defender, offKind) { return offKind === "Physical" ? defender.def : defender.spc; }
+
+  function effectiveness(moveType, t1, t2) {
+    var m = 1, row = CHART[moveType] || {};
+    if (row[t1]) m *= row[t1];
+    if (t2 && t2 !== "None" && row[t2]) m *= row[t2];
+    return m;
+  }
+
+  function d(n) { return 1 + Math.floor(Math.random() * n); }
+  function hpBar(cur, max) {
+    var w = 14, f = Math.max(0, cur) / max, full = Math.round(f * w);
+    return "[" + "#".repeat(full) + "-".repeat(w - full) + "]";
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+  var p1Select = document.querySelector("#p1Select");
+  var p2Select = document.querySelector("#p2Select");
+
+  ORDER.forEach(function (k) {
+    var e = dexEntry(k); e.key = k;
+    var o1 = document.createElement("option"); o1.value = k; o1.textContent = e.name + " [" + typeStr(e) + "]";
+    var o2 = document.createElement("option"); o2.value = k; o2.textContent = e.name + " [" + typeStr(e) + "]";
+    p1Select.appendChild(o1); p2Select.appendChild(o2);
+  });
+  p1Select.value = "charizard";
+  p2Select.value = "mewtwo";
+
+  function renderCards() {
+    ["p1", "p2"].forEach(function (side) {
+      var sel = side === "p1" ? p1Select : p2Select;
+      var el = document.querySelector(side === "p1" ? "#p1StatsEl" : "#p2StatsEl");
+      var e = dexEntry(sel.value);
+      el.textContent =
+        e.name + " (" + typeStr(e) + ")  BST " + bst(e) + "\n" +
+        "HP " + e.hp + "  Atk " + e.atk + "  Def " + e.def + "  Spc " + e.spc + "  Spe " + e.spe + "\n" +
+        "Move: " + e.move + " [" + e.moveType + "]";
+      var img = document.querySelector(side === "p1" ? "#p1ImgEl" : "#p2ImgEl");
+      img.src = imgFor(sel.value);
+      img.alt = e.name + " sprite";
+    });
+  }
+  p1Select.addEventListener("change", renderCards);
+  p2Select.addEventListener("change", renderCards);
+  p1Select.addEventListener("input", renderCards);
+  p2Select.addEventListener("input", renderCards);
+  renderCards();
+
+  function setHp(f1, f2) {
+    document.querySelector("#p1HpEl").textContent = f1.label + " HP " + Math.max(0, f1.hp) + "/" + f1.maxHP + " " + hpBar(f1.hp, f1.maxHP);
+    document.querySelector("#p2HpEl").textContent = f2.label + " HP " + Math.max(0, f2.hp) + "/" + f2.maxHP + " " + hpBar(f2.hp, f2.maxHP);
+    var i1 = document.querySelector("#p1HpImg"); i1.src = imgFor(f1.key); i1.alt = f1.name + " sprite";
+    var i2 = document.querySelector("#p2HpImg"); i2.src = imgFor(f2.key); i2.alt = f2.name + " sprite";
+  }
+
+  var busy = false;
+  var quizResolver = null;
+
+  function askQuiz(questionText) {
+    var quizCtn = document.querySelector("#quizCtn");
+    document.querySelector("#quizQEl").textContent = questionText;
+    var quizInput = document.querySelector("#quizInput");
+    quizInput.value = "";
+    quizCtn.hidden = false;
+    quizCtn.scrollIntoView({block: "nearest"});
+    quizInput.focus();
+    return new Promise(function (resolve) { quizResolver = resolve; });
+  }
+  function submitQuiz() {
+    if (!quizResolver) return;
+    var n = parseInt(document.querySelector("#quizInput").value.trim(), 10);
+    document.querySelector("#quizCtn").hidden = true;
+    var r = quizResolver; quizResolver = null;
+    r(Number.isFinite(n) ? n : null);
+  }
+  document.querySelector("#quizBtn").addEventListener("click", submitQuiz);
+  document.querySelector("#quizInput").addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") submitQuiz();
+  });
+
+  function attackLog(att, def) {
+    var defStat = defStatOf(def, att.offKind);
+    var hitBonus = Math.floor(att.off / 25);
+    var dodge = Math.floor(defStat / 30);
+    var dc = 12 + dodge;
+    var r20 = d(20);
+    var total = r20 + hitBonus;
+    var crit = r20 === 20, fumble = r20 === 1;
+    var hit = crit || (!fumble && total >= dc);
+    var cls = crit ? "crit" : (!hit ? "miss" : "");
+
+    if (!hit) {
+      var why = fumble ? "FUMBLE" : "MISS";
+      return { html: esc(att.label) + " uses " + esc(att.move) + "! [d20=" + r20 + "+" + hitBonus + "=" + total + " vs DC" + dc + " → " + why + "]",
+               cls: "miss", dmg: 0, crit: false, hit: false, before: def.hp, after: def.hp };
+    }
+    var r12 = d(12), r8 = d(8);
+    var raw = r12 + r8 + Math.floor(att.off * 0.35) - Math.floor(defStat * 0.15);
+    raw = Math.max(8, raw);
+    var eff = effectiveness(att.moveType, def.types[0], def.types[1]);
+    var dmg = Math.floor(raw * eff);
+    if (crit) dmg = Math.floor(dmg * 1.5);
+    var before = def.hp;
+    def.hp = Math.max(0, def.hp - dmg);
+    var effTxt = eff > 1 ? " Super effective!" : (eff < 1 ? " Not very effective." : "");
+    return { html: esc(att.label) + " uses " + esc(att.move) + "! [d20=" + r20 + "+" + hitBonus + "=" + total + " vs DC" + dc +
+      (crit ? " → CRIT!" : " → HIT") + "] [d12=" + r12 + "+d8=" + r8 + "+" +
+      Math.floor(att.off * 0.35) + "−" + Math.floor(defStat * 0.15) + "=" + raw + " x" + eff + (crit ? " x1.5" : "") +
+      " = <b>" + dmg + "</b>] " + esc(def.label) + " " + before + "→" + def.hp + "." + effTxt,
+      cls: (crit ? "crit " : "") + (eff > 1 ? "super" : ""), dmg: dmg, crit: crit, hit: true, before: before, after: def.hp };
+  }
+
+  async function battle() {
+    if (busy) return;
+    busy = true;
+    renderCards();
+    document.querySelector("#fightBtn").disabled = true;
+    document.querySelector("#randomBtn").disabled = true;
+    var instant = document.querySelector("#instantInput").checked;
+
+    var k1 = p1Select.value, k2 = p2Select.value;
+    var e1 = dexEntry(k1); e1.key = k1;
+    var e2 = dexEntry(k2); e2.key = k2;
+    var f1 = toBattle(e1, e1.name + " (Player)");
+    var f2 = toBattle(e2, e2.name + " (CPU)");
+
+    var logEl = document.querySelector("#logEl");
+    logEl.innerHTML = "";
+    function add(html, cls) {
+      var div = document.createElement("div");
+      if (cls) div.className = cls;
+      div.innerHTML = html;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    add("<b>BATTLE START: " + esc(f1.label) + " vs " + esc(f2.label) + "</b>");
+    add(esc(f1.label) + " — HP" + f1.maxHP + " Atk" + f1.atk + " Def" + f1.def + " Spc" + f1.spc + " Spe" + f1.spe + " | " + esc(f1.move) + " [" + esc(f1.moveType) + "/" + f1.offKind + "]");
+    add(esc(f2.label) + " — HP" + f2.maxHP + " Atk" + f2.atk + " Def" + f2.def + " Spc" + f2.spc + " Spe" + f2.spe + " | " + esc(f2.move) + " [" + esc(f2.moveType) + "/" + f2.offKind + "]");
+    setHp(f1, f2);
+    if (!instant) await sleep(600);
+
+    var round = 0, winner = null, quizNum = 0;
+    document.querySelector("#quizCtn").hidden = true;
+    quizResolver = null;
+
+    // Quiz 1: HP left (subtraction). Quiz 2: initiative total (addition).
+    // Quiz 3: hits to KO (division, round up). Each correct answer = bonus attack.
+    async function maybeQuiz(def, res, pInit) {
+      if (quizNum >= 3 || !res.hit || def.hp <= 0) return;
+      var q = quizNum + 1, expected, question;
+      if (q === 1) {
+        expected = res.after;
+        question = def.label + " had " + res.before + " HP and just took " + res.dmg + " damage. How much HP is left?";
+      } else if (q === 2) {
+        expected = pInit.roll + pInit.bonus;
+        question = "This round " + f1.label + " rolled d20=" + pInit.roll + " for initiative with a Speed bonus of +" + pInit.bonus + ". What was the initiative total?";
+      } else {
+        expected = Math.ceil(res.after / res.dmg);
+        question = "A Pokemon has " + res.after + " HP left and takes exactly " + res.dmg + " damage per hit from now on. How many hits will knock it out?";
+      }
+      quizNum = q;
+      add("<span class='round'>— MATH QUIZ " + q + "/3 —</span> The battle pauses! Answer to win a bonus attack for " + esc(f1.label) + ".");
+      var answer = await askQuiz(question);
+      var good = answer === expected;
+      var flash = document.querySelector("#quizFlash");
+      flash.textContent = good ? "✓ CORRECT! Bonus attack!" : "✗ WRONG! Answer: " + expected;
+      flash.className = good ? "good" : "bad";
+      flash.hidden = false;
+      await sleep(1600);
+      flash.hidden = true;
+      if (good) {
+        add("Correct! " + expected + " was right — " + esc(f1.label) + " earns a BONUS ATTACK!");
+        var b = attackLog(f1, f2);
+        add("Bonus! " + b.html, b.cls); setHp(f1, f2);
+        if (f2.hp <= 0) winner = f1;
+      } else {
+        add("Wrong! The answer was " + expected + ". No bonus attack.");
+      }
+    }
+    while (f1.hp > 0 && f2.hp > 0 && round < 100) {
+      round++;
+      var i1r = d(20), i1b = Math.floor(f1.spe / 10), i1 = i1r + i1b;
+      var i2r = d(20), i2b = Math.floor(f2.spe / 10), i2 = i2r + i2b;
+      var first = i1 >= i2 ? f1 : f2, second = first === f1 ? f2 : f1;
+      var fi = first === f1 ? i1 : i2, si = second === f1 ? i1 : i2;
+      add("<span class='round'>— Round " + round + " —</span> Initiative: " + esc(f1.label) + " " + i1 + " vs " + esc(f2.label) + " " + i2 + " → " + esc(first.label) + " first.");
+
+      var r = attackLog(first, second);
+      add(r.html, r.cls); setHp(f1, f2);
+      if (!instant) await sleep(550);
+      if (second.hp <= 0) { winner = first; break; }
+      await maybeQuiz(second, r, {roll: i1r, bonus: i1b});
+      if (winner) break;
+
+      var r2 = attackLog(second, first);
+      add(r2.html, r2.cls); setHp(f1, f2);
+      if (!instant) await sleep(550);
+      if (first.hp <= 0) { winner = second; break; }
+      await maybeQuiz(first, r2, {roll: i1r, bonus: i1b});
+      if (winner) break;
+    }
+
+    if (winner) {
+      var loser = winner === f1 ? f2 : f1;
+      add("<span class='winner'>" + esc(loser.label) + " faints! " + esc(winner.label) + " WINS in " + round + " round" + (round === 1 ? "" : "s") + " with " + winner.hp + "/" + winner.maxHP + " HP left!</span>", "winner");
+    } else {
+      add("The battle ran 100 rounds with no winner — a draw!");
+    }
+
+    document.querySelector("#fightBtn").disabled = false;
+    document.querySelector("#randomBtn").disabled = false;
+    busy = false;
+  }
+
+  document.querySelector("#fightBtn").addEventListener("click", battle);
+  document.querySelector("#randomBtn").addEventListener("click", function () {
+    if (busy) return;
+    var a = ORDER[Math.floor(Math.random() * ORDER.length)];
+    var b = ORDER[Math.floor(Math.random() * ORDER.length)];
+    if (b === a) b = ORDER[(ORDER.indexOf(a) + 1 + Math.floor(Math.random() * (ORDER.length - 1))) % ORDER.length];
+    p1Select.value = a; p2Select.value = b;
+    renderCards();
+    battle();
+  });
+})();
+</script>
+
+</body>
+</html>
