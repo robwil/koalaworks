@@ -29,6 +29,26 @@
   #quizFlash[hidden] { display: none; }
   #quizFlash.good { background: rgba(0, 170, 0, 0.9); }
   #quizFlash.bad { background: rgba(200, 20, 20, 0.9); }
+  /* End-of-battle summary overlay */
+  #resultOverlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.55); }
+  #resultOverlay[hidden] { display: none; }
+  .resultCard { background: Canvas; color: CanvasText; border: 2px solid #888; border-radius: 10px; width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+  .resultBanner { font-size: 26px; font-weight: bold; letter-spacing: 3px; color: #fff; padding: 10px; border-radius: 8px 8px 0 0; }
+  .resultBanner.win { background: #1a9a1a; }
+  .resultBanner.lose { background: #c41e1e; }
+  .resultBanner.draw { background: #777; }
+  .resultBody { padding: 14px 16px 16px; }
+  .resultWinnerSprite { width: 144px; height: 144px; image-rendering: pixelated; image-rendering: crisp-edges; animation: resultBounce 0.6s ease-out; }
+  @keyframes resultBounce { 0% { transform: translateY(-24px) scale(0.8); opacity: 0; } 60% { transform: translateY(4px) scale(1.05); opacity: 1; } 100% { transform: none; } }
+  .resultName { font-size: 18px; font-weight: bold; margin-top: 2px; }
+  .resultHp { font-size: 13px; margin-top: 4px; }
+  .resultDivider { border: 0; border-top: 1px solid #888; margin: 14px 0; opacity: 0.6; }
+  .resultLoser { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 14px; }
+  .resultLoserSprite { width: 64px; height: 64px; image-rendering: pixelated; image-rendering: crisp-edges; transform: rotate(90deg); filter: grayscale(1); opacity: 0.6; }
+  .resultDrawRow { display: flex; justify-content: center; gap: 20px; }
+  .resultDrawRow img { width: 96px; height: 96px; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .resultStats { font-size: 13px; opacity: 0.85; margin: 12px 0 14px; }
+  .resultBtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   #hpRow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
   .hpBox { flex: 1 1 200px; font-size: 13px; }
   .hpBar { letter-spacing: 1px; }
@@ -106,6 +126,19 @@
       </div>
     </div>
     <div id="quizFlash" hidden></div>
+    <div id="resultOverlay" hidden>
+      <div class="resultCard" role="dialog" aria-modal="true" aria-labelledby="resultBannerEl">
+        <div class="resultBanner" id="resultBannerEl"></div>
+        <div class="resultBody">
+          <div id="resultMainEl"></div>
+          <div class="resultStats" id="resultStatsEl"></div>
+          <div class="resultBtns">
+            <button id="rematchBtn">REMATCH</button>
+            <button id="resultCloseBtn">CLOSE</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="logEl">Choose your fighters and press FIGHT.</div>
   </div>
 </div>
@@ -327,7 +360,7 @@
     setHp(f1, f2);
     if (!instant) await sleep(600);
 
-    var round = 0, winner = null, quizNum = 0;
+    var round = 0, winner = null, quizNum = 0, quizCorrect = 0;
     document.querySelector("#quizCtn").hidden = true;
     quizResolver = null;
 
@@ -370,6 +403,7 @@
       await sleep(1600);
       flash.hidden = true;
       if (good) {
+        quizCorrect++;
         add("Correct! " + expected + " was right — " + esc(f1.label) + " earns a BONUS ATTACK!");
         var b = attackLog(f1, f2);
         add("Bonus! " + b.html, b.cls); setHp(f1, f2);
@@ -411,7 +445,49 @@
     document.querySelector("#fightBtn").disabled = false;
     document.querySelector("#randomBtn").disabled = false;
     busy = false;
+    showResult(f1, f2, winner, round, quizCorrect, quizNum);
   }
+
+  // End-of-battle summary overlay. The winner line in the log stays as the record;
+  // this is a nicer presentation of the same info plus the quiz score.
+  function spriteImg(f, cls) {
+    return "<img class='" + cls + "' src='" + imgFor(f.key) + "' alt='" + esc(f.name) + " sprite'>";
+  }
+  function showResult(f1, f2, winner, rounds, quizCorrect, quizAsked) {
+    var banner = document.querySelector("#resultBannerEl");
+    var main = document.querySelector("#resultMainEl");
+    var roundsTxt = rounds + " round" + (rounds === 1 ? "" : "s");
+    if (winner) {
+      var loser = winner === f1 ? f2 : f1;
+      banner.textContent = winner === f1 ? "★ VICTORY ★" : "DEFEAT";
+      banner.className = "resultBanner " + (winner === f1 ? "win" : "lose");
+      main.innerHTML =
+        spriteImg(winner, "resultWinnerSprite") +
+        "<div class='resultName'>" + esc(winner.label) + "</div>" +
+        "<div class='resultHp'>HP " + winner.hp + "/" + winner.maxHP + " " + hpBar(winner.hp, winner.maxHP) + "</div>" +
+        "<hr class='resultDivider'>" +
+        "<div class='resultLoser'>" + spriteImg(loser, "resultLoserSprite") +
+        "<div>" + esc(loser.label) + "<br><b>fainted</b></div></div>";
+    } else {
+      banner.textContent = "DRAW";
+      banner.className = "resultBanner draw";
+      main.innerHTML = "<div class='resultDrawRow'>" + spriteImg(f1, "") + spriteImg(f2, "") + "</div>" +
+        "<div class='resultName'>Nobody fainted after 100 rounds</div>";
+    }
+    document.querySelector("#resultStatsEl").textContent =
+      roundsTxt + (quizAsked ? " · Quiz " + quizCorrect + "/" + quizAsked + " correct" : "");
+    document.querySelector("#resultOverlay").hidden = false;
+    document.querySelector("#rematchBtn").focus();
+  }
+  function hideResult() { document.querySelector("#resultOverlay").hidden = true; }
+  document.querySelector("#resultCloseBtn").addEventListener("click", hideResult);
+  document.querySelector("#rematchBtn").addEventListener("click", function () { hideResult(); battle(); });
+  document.querySelector("#resultOverlay").addEventListener("click", function (ev) {
+    if (ev.target === ev.currentTarget) hideResult(); // click on the dimmed backdrop
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") hideResult();
+  });
 
   document.querySelector("#fightBtn").addEventListener("click", battle);
   document.querySelector("#randomBtn").addEventListener("click", function () {
