@@ -348,20 +348,20 @@
       }
       quizNum = q;
       add("<span class='round'>— MATH QUIZ " + q + "/3 —</span> The battle pauses! Answer to win a bonus attack for " + esc(f1.label) + ".");
-      // Quiz 1 asks for the HP left, so hide it in the HP bar and in the log line
-      // that just reported it until the player has answered.
-      var hiddenAfter = null;
-      if (q === 1) {
-        setHp(f1, f2, def);
-        var afters = logEl.querySelectorAll(".hpAfter");
-        hiddenAfter = afters[afters.length - 1] || null;
-        if (hiddenAfter) hiddenAfter.textContent = "???";
+      // Hide the answer wherever it's already on screen until the player has answered:
+      // quiz 1 (HP left) in the HP bar and the log line that just reported it;
+      // quiz 2 (initiative total) in this round's initiative log line.
+      var hiddenEl = null, hiddenText = "";
+      var hideSel = q === 1 ? ".hpAfter" : (q === 2 ? ".p1Init" : null);
+      if (q === 1) setHp(f1, f2, def);
+      if (hideSel) {
+        var matches = logEl.querySelectorAll(hideSel);
+        hiddenEl = matches[matches.length - 1] || null;
+        if (hiddenEl) { hiddenText = hiddenEl.textContent; hiddenEl.textContent = "???"; }
       }
       var answer = await askQuiz(question);
-      if (q === 1) {
-        setHp(f1, f2);
-        if (hiddenAfter) hiddenAfter.textContent = String(res.after);
-      }
+      if (q === 1) setHp(f1, f2);
+      if (hiddenEl) hiddenEl.textContent = hiddenText;
       var good = answer === expected;
       var flash = document.querySelector("#quizFlash");
       flash.textContent = good ? "✓ CORRECT! Bonus attack!" : "✗ WRONG! Answer: " + expected;
@@ -384,7 +384,7 @@
       var i2r = d(20), i2b = Math.floor(f2.spe / 10), i2 = i2r + i2b;
       var first = i1 >= i2 ? f1 : f2, second = first === f1 ? f2 : f1;
       var fi = first === f1 ? i1 : i2, si = second === f1 ? i1 : i2;
-      add("<span class='round'>— Round " + round + " —</span> Initiative: " + esc(f1.label) + " " + i1 + " vs " + esc(f2.label) + " " + i2 + " → " + esc(first.label) + " first.");
+      add("<span class='round'>— Round " + round + " —</span> Initiative: " + esc(f1.label) + " <span class='p1Init'>" + i1 + "</span> vs " + esc(f2.label) + " " + i2 + " → " + esc(first.label) + " first.");
 
       var r = attackLog(first, second);
       add(r.html, r.cls); setHp(f1, f2);
