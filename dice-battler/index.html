@@ -227,9 +227,15 @@
   p2Select.addEventListener("input", renderCards);
   renderCards();
 
-  function setHp(f1, f2) {
-    document.querySelector("#p1HpEl").textContent = f1.label + " HP " + Math.max(0, f1.hp) + "/" + f1.maxHP + " " + hpBar(f1.hp, f1.maxHP);
-    document.querySelector("#p2HpEl").textContent = f2.label + " HP " + Math.max(0, f2.hp) + "/" + f2.maxHP + " " + hpBar(f2.hp, f2.maxHP);
+  // `masked` (optional) is a fighter whose current HP is hidden as ??? (e.g. while
+  // a quiz is asking the player to work out that HP).
+  function hpText(f, masked) {
+    if (f === masked) return f.label + " HP ???/" + f.maxHP + " [" + "?".repeat(14) + "]";
+    return f.label + " HP " + Math.max(0, f.hp) + "/" + f.maxHP + " " + hpBar(f.hp, f.maxHP);
+  }
+  function setHp(f1, f2, masked) {
+    document.querySelector("#p1HpEl").textContent = hpText(f1, masked);
+    document.querySelector("#p2HpEl").textContent = hpText(f2, masked);
     var i1 = document.querySelector("#p1HpImg"); i1.src = imgFor(f1.key); i1.alt = f1.name + " sprite";
     var i2 = document.querySelector("#p2HpImg"); i2.src = imgFor(f2.key); i2.alt = f2.name + " sprite";
   }
@@ -287,7 +293,7 @@
     return { html: esc(att.label) + " uses " + esc(att.move) + "! [d20=" + r20 + "+" + hitBonus + "=" + total + " vs DC" + dc +
       (crit ? " → CRIT!" : " → HIT") + "] [d12=" + r12 + "+d8=" + r8 + "+" +
       Math.floor(att.off * 0.35) + "−" + Math.floor(defStat * 0.15) + "=" + raw + " x" + eff + (crit ? " x1.5" : "") +
-      " = <b>" + dmg + "</b>] " + esc(def.label) + " " + before + "→" + def.hp + "." + effTxt,
+      " = <b>" + dmg + "</b>] " + esc(def.label) + " " + before + "→<span class='hpAfter'>" + def.hp + "</span>." + effTxt,
       cls: (crit ? "crit " : "") + (eff > 1 ? "super" : ""), dmg: dmg, crit: crit, hit: true, before: before, after: def.hp };
   }
 
@@ -342,7 +348,20 @@
       }
       quizNum = q;
       add("<span class='round'>— MATH QUIZ " + q + "/3 —</span> The battle pauses! Answer to win a bonus attack for " + esc(f1.label) + ".");
+      // Quiz 1 asks for the HP left, so hide it in the HP bar and in the log line
+      // that just reported it until the player has answered.
+      var hiddenAfter = null;
+      if (q === 1) {
+        setHp(f1, f2, def);
+        var afters = logEl.querySelectorAll(".hpAfter");
+        hiddenAfter = afters[afters.length - 1] || null;
+        if (hiddenAfter) hiddenAfter.textContent = "???";
+      }
       var answer = await askQuiz(question);
+      if (q === 1) {
+        setHp(f1, f2);
+        if (hiddenAfter) hiddenAfter.textContent = String(res.after);
+      }
       var good = answer === expected;
       var flash = document.querySelector("#quizFlash");
       flash.textContent = good ? "✓ CORRECT! Bonus attack!" : "✗ WRONG! Answer: " + expected;
